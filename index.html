@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>OMODA 5 SHS HEV - Control de Consumo</title>
+  
+  <!-- Dynamic PWA Manifest Placeholder -->
+  <link id="manifest-placeholder" rel="manifest">
+  <meta name="theme-color" content="#121826">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="OMODA Consumo">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Tailwind Configuration -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bgDark: '#121826',
+            cardDark: '#1b2436',
+            cardHover: '#222d42',
+            accentCyan: '#00d2ff',
+            accentGreen: '#10b981',
+            accentOrange: '#f59e0b',
+            accentRed: '#ef4444',
+            borderDark: '#2a364f'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body {
+      background-color: #121826;
+      color: #f1f5f9;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .glow-cyan {
+      box-shadow: 0 0 20px rgba(0, 210, 255, 0.25);
+    }
+
+    .glow-green {
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
+    }
+
+    .glass-card {
+      background: rgba(27, 36, 54, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(42, 54, 79, 0.8);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #121826;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a364f;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00d2ff;
+    }
+
+    /* Active Tab Glow */
+    .tab-btn.active {
+      color: #00d2ff;
+      border-bottom: 2px solid #00d2ff;
+    }
+    .mobile-nav-btn.active {
+      color: #00d2ff;
+    }
+    .mobile-nav-btn.active i {
+      transform: translateY(-2px);
+      filter: drop-shadow(0 2px 8px rgba(0,210,255,0.6));
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between pb-20 md:pb-6 antialiased selection:bg-accentCyan selection:text-black">
+
+  <!-- Top Header Navigation -->
+  <header class="sticky top-0 z-40 bg-bgDark/90 backdrop-blur-md border-b border-borderDark px-4 py-3">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-accentCyan to-blue-600 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-accentCyan/20">
+          <i class="fa-solid font-bold fa-car"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold text-base md:text-lg tracking-wider text-white">OMODA 5</h1>
+            <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-accentCyan/10 text-accentCyan border border-accentCyan/30">SHS HEV</span>
+          </div>
+          <p class="text-xs text-slate-400">Control de Consumo & Eficiencia</p>
+        </div>
+      </div>
+
+      <!-- Specs Badge / PWA Quick Indicator -->
+      <div class="hidden sm:flex items-center gap-3 text-xs text-slate-300">
+        <span class="bg-cardDark px-3 py-1.5 rounded-lg border border-borderDark flex items-center gap-1.5">
+          <i class="fa-solid fa-gas-pump text-accentCyan"></i> Depósito: <strong class="text-white">51L</strong>
+        </span>
+        <span class="bg-cardDark px-3 py-1.5 rounded-lg border border-borderDark flex items-center gap-1.5">
+          <i class="fa-solid fa-leaf text-accentGreen"></i> WLTP: <strong class="text-white">5.2 L/100km</strong>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Desktop Navigation Tabs -->
+  <nav class="hidden md:block bg-cardDark/50 border-b border-borderDark">
+    <div class="max-w-4xl mx-auto flex justify-center space-x-8 text-sm font-medium">
+      <button onclick="switchTab('calculadora')" id="tab-desk-calculadora" class="tab-btn active py-3 px-2 flex items-center gap-2 transition-all">
+        <i class="fa-solid fa-calculator"></i> Calculadora
+      </button>
+      <button onclick="switchTab('historial')" id="tab-desk-historial" class="tab-btn text-slate-400 py-3 px-2 flex items-center gap-2 transition-all">
+        <i class="fa-solid fa-list-check"></i> Historial
+      </button>
+      <button onclick="switchTab('estadisticas')" id="tab-desk-estadisticas" class="tab-btn text-slate-400 py-3 px-2 flex items-center gap-2 transition-all">
+        <i class="fa-solid fa-chart-line"></i> Estadísticas
+      </button>
+      <button onclick="switchTab('pwa')" id="tab-desk-pwa" class="tab-btn text-slate-400 py-3 px-2 flex items-center gap-2 transition-all">
+        <i class="fa-solid fa-mobile-screen-button"></i> Backup / PWA
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="max-w-4xl mx-auto px-4 py-6 w-full flex-grow">
+
+    <!-- TAB 1: CALCULADORA -->
+    <section id="sec-calculadora" class="space-y-6">
+      
+      <!-- Input Form Card -->
+      <div class="glass-card rounded-2xl p-5 md:p-6 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-12 -top-12 w-32 h-32 bg-accentCyan/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="flex items-center justify-between mb-4 border-b border-borderDark pb-3">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-square-plus text-accentCyan"></i> Nuevo Repostaje
+          </h2>
+          <span class="text-xs text-slate-400">Valores al llenar el depósito</span>
+        </div>
+
+        <form id="refuel-form" onsubmit="handleSaveRefuel(event)" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <!-- Kilómetros Recorridos -->
+            <div>
+              <label for="input-km" class="block text-xs font-semibold text-slate-300 mb-1">
+                Kilómetros Recorridos (km)
+              </label>
+              <div class="relative">
+                <input type="number" id="input-km" step="0.1" min="1" placeholder="Ej. 650" required
+                       oninput="calculateLiveMetrics()"
+                       class="w-full bg-bgDark border border-borderDark focus:border-accentCyan rounded-xl py-2.5 pl-3 pr-10 text-white placeholder-slate-500 outline-none transition-all font-semibold">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-400 pointer-events-none">km</span>
+              </div>
+            </div>
+
+            <!-- Litros Repostados -->
+            <div>
+              <label for="input-litros" class="block text-xs font-semibold text-slate-300 mb-1">
+                Litros Repostados (L)
+              </label>
+              <div class="relative">
+                <input type="number" id="input-litros" step="0.01" min="0.1" max="51" placeholder="Ej. 33.8" required
+                       oninput="calculateLiveMetrics()"
+                       class="w-full bg-bgDark border border-borderDark focus:border-accentCyan rounded-xl py-2.5 pl-3 pr-10 text-white placeholder-slate-500 outline-none transition-all font-semibold">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-400 pointer-events-none">L</span>
+              </div>
+            </div>
+
+            <!-- Precio por Litro -->
+            <div>
+              <label for="input-precio" class="block text-xs font-semibold text-slate-300 mb-1">
+                Precio Carburante (€/L)
+              </label>
+              <div class="relative">
+                <input type="number" id="input-precio" step="0.001" min="0.1" placeholder="Ej. 1.589" required
+                       oninput="calculateLiveMetrics()"
+                       class="w-full bg-bgDark border border-borderDark focus:border-accentCyan rounded-xl py-2.5 pl-3 pr-10 text-white placeholder-slate-500 outline-none transition-all font-semibold">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-400 pointer-events-none">€/L</span>
+              </div>
+            </div>
+
+            <!-- Fecha -->
+            <div>
+              <label for="input-fecha" class="block text-xs font-semibold text-slate-300 mb-1">
+                Fecha del Repostaje
+              </label>
+              <input type="date" id="input-fecha" required
+                     class="w-full bg-bgDark border border-borderDark focus:border-accentCyan rounded-xl py-2.5 px-3 text-white outline-none transition-all font-semibold">
+            </div>
+
+          </div>
+
+          <!-- Action Button -->
+          <button type="submit" 
+                  class="w-full mt-2 bg-gradient-to-r from-accentCyan to-blue-600 text-slate-950 font-bold py-3 px-4 rounded-xl shadow-lg shadow-accentCyan/20 hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2">
+            <i class="fa-solid fa-floppy-disk text-base"></i> Registrar Repostaje
+          </button>
+        </form>
+      </div>
+
+      <!-- Live Calculation Cards -->
+      <div class="space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">Métricas del Repostaje Actual</h3>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          
+          <!-- Consumo Medio -->
+          <div class="glass-card p-4 rounded-xl relative overflow-hidden flex flex-col justify-between">
+            <span class="text-[11px] text-slate-400 font-medium">Consumo Medio</span>
+            <div class="mt-2">
+              <span id="res-consumo" class="text-2xl md:text-3xl font-extrabold text-accentCyan">--</span>
+              <span class="text-xs text-slate-400 ml-1">l/100km</span>
+            </div>
+            <div id="wltp-badge" class="mt-2 text-[10px] px-2 py-0.5 rounded-md inline-block w-fit bg-slate-800 text-slate-400">
+              vs WLTP (5.2)
+            </div>
+          </div>
+
+          <!-- Coste Total -->
+          <div class="glass-card p-4 rounded-xl flex flex-col justify-between">
+            <span class="text-[11px] text-slate-400 font-medium">Gasto Total</span>
+            <div class="mt-2">
+              <span id="res-coste-total" class="text-2xl md:text-3xl font-extrabold text-white">--</span>
+              <span class="text-xs text-slate-400 ml-1">€</span>
+            </div>
+            <span class="text-[10px] text-slate-400 mt-2">Litros × €/L</span>
+          </div>
+
+          <!-- Coste por Km -->
+          <div class="glass-card p-4 rounded-xl flex flex-col justify-between">
+            <span class="text-[11px] text-slate-400 font-medium">Coste / Km</span>
+            <div class="mt-2">
+              <span id="res-coste-km" class="text-2xl md:text-3xl font-extrabold text-white">--</span>
+              <span class="text-xs text-slate-400 ml-1">€/km</span>
+            </div>
+            <span class="text-[10px] text-slate-400 mt-2">Gasto / Kilómetros</span>
+          </div>
+
+          <!-- Autonomía Proyectada -->
+          <div class="glass-card p-4 rounded-xl flex flex-col justify-between">
+            <span class="text-[11px] text-slate-400 font-medium">Autonomía Depósito</span>
+            <div class="mt-2">
+              <span id="res-autonomia" class="text-2xl md:text-3xl font-extrabold text-accentGreen">--</span>
+              <span class="text-xs text-slate-400 ml-1">km</span>
+            </div>
+            <span class="text-[10px] text-slate-400 mt-2">Proyección 51L</span>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 2: HISTORIAL -->
+    <section id="sec-historial" class="space-y-4 hidden">
+      <div class="glass-card rounded-2xl p-5 shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-borderDark">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-clock-rotate-left text-accentCyan"></i> Historial de Repostajes
+            </h2>
+            <p class="text-xs text-slate-400">Todos los registros almacenados en el dispositivo</p>
+          </div>
+          <div class="text-xs bg-bgDark px-3 py-1.5 rounded-lg border border-borderDark text-slate-300 w-fit">
+            Total Registros: <strong id="historial-count" class="text-accentCyan">0</strong>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="historial-empty" class="text-center py-12 hidden">
+          <div class="w-16 h-16 rounded-full bg-cardDark border border-borderDark flex items-center justify-center mx-auto text-slate-500 mb-3 text-2xl">
+            <i class="fa-solid fa-gas-pump"></i>
+          </div>
+          <p class="text-sm text-slate-300 font-semibold">Sin repostajes guardados</p>
+          <p class="text-xs text-slate-500 mt-1">Usa la calculadora para añadir tu primer registro.</p>
+        </div>
+
+        <!-- History Table / Card List -->
+        <div id="historial-container" class="space-y-3">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: ESTADÍSTICAS -->
+    <section id="sec-estadisticas" class="space-y-6 hidden">
+      
+      <!-- Global Summary Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        
+        <div class="glass-card p-4 rounded-xl">
+          <span class="text-[11px] text-slate-400 block font-medium">Consumo Medio Global</span>
+          <span id="stat-media-global" class="text-xl md:text-2xl font-black text-accentCyan mt-1 block">--</span>
+          <span class="text-[10px] text-slate-500">l/100km acumulado</span>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl">
+          <span class="text-[11px] text-slate-400 block font-medium">Km Totales</span>
+          <span id="stat-km-totales" class="text-xl md:text-2xl font-black text-white mt-1 block">--</span>
+          <span class="text-[10px] text-slate-500">km registrados</span>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl">
+          <span class="text-[11px] text-slate-400 block font-medium">Gasto Total</span>
+          <span id="stat-gasto-total" class="text-xl md:text-2xl font-black text-white mt-1 block">--</span>
+          <span class="text-[10px] text-slate-500">€ invertidos</span>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl">
+          <span class="text-[11px] text-slate-400 block font-medium">Mejor Consumo</span>
+          <span id="stat-mejor-consumo" class="text-xl md:text-2xl font-black text-accentGreen mt-1 block">--</span>
+          <span class="text-[10px] text-slate-500">mínimo histórico</span>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl col-span-2 lg:col-span-1">
+          <span class="text-[11px] text-slate-400 block font-medium">Mayor Consumo</span>
+          <span id="stat-peor-consumo" class="text-xl md:text-2xl font-black text-accentOrange mt-1 block">--</span>
+          <span class="text-[10px] text-slate-500">máximo histórico</span>
+        </div>
+
+      </div>
+
+      <!-- Chart Card -->
+      <div class="glass-card rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4 border-b border-borderDark pb-3">
+          <div>
+            <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-chart-line text-accentCyan"></i> Evolución de Consumo (l/100km)
+            </h2>
+            <p class="text-xs text-slate-400">Comparativa con línea base de homologación WLTP (5.2 l/100km)</p>
+          </div>
+        </div>
+
+        <div class="relative h-64 md:h-80 w-full">
+          <canvas id="chart-consumo"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 4: BACKUP & PWA -->
+    <section id="sec-pwa" class="space-y-6 hidden">
+      
+      <!-- PWA Installation Banner -->
+      <div class="glass-card rounded-2xl p-5 md:p-6 shadow-xl relative overflow-hidden">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-accentCyan/20 text-accentCyan border border-accentCyan/30 flex items-center justify-center text-2xl shrink-0">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+          </div>
+          <div class="space-y-2">
+            <h2 class="text-lg font-bold text-white">Instalar en la Pantalla de Inicio (PWA)</h2>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Esta aplicación está optimizada como Progressive Web App (PWA). Puedes instalarla directamente en tu smartphone Android o iPhone sin pasar por la App Store para usarla de forma fluida y 100% offline.
+            </p>
+
+            <div class="pt-2">
+              <button id="pwa-install-btn" onclick="triggerPwaInstall()"
+                      class="bg-accentCyan hover:bg-cyan-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-accentCyan/20 transition-all">
+                <i class="fa-solid fa-download"></i> Instalar Aplicación Ahora
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Installation Instructions -->
+        <div class="mt-5 pt-4 border-t border-borderDark grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="bg-bgDark/60 p-3.5 rounded-xl border border-borderDark">
+            <h4 class="font-bold text-white mb-1 flex items-center gap-1.5">
+              <i class="fa-brands fa-android text-accentGreen"></i> Instrucciones Android (Chrome / Edge)
+            </h4>
+            <p class="text-slate-400 leading-relaxed">
+              Pulsa el menú de 3 puntos (<i class="fa-solid fa-ellipsis-vertical"></i>) de tu navegador y selecciona <strong>"Añadir a pantalla de inicio"</strong> o <strong>"Instalar aplicación"</strong>.
+            </p>
+          </div>
+
+          <div class="bg-bgDark/60 p-3.5 rounded-xl border border-borderDark">
+            <h4 class="font-bold text-white mb-1 flex items-center gap-1.5">
+              <i class="fa-brands fa-apple text-slate-300"></i> Instrucciones iOS (Safari)
+            </h4>
+            <p class="text-slate-400 leading-relaxed">
+              Pulsa el botón <strong>Compartir</strong> (<i class="fa-solid fa-share-from-square"></i>) en la barra inferior de Safari y elige <strong>"Añadir a la pantalla de inicio"</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backup JSON Export / Import -->
+      <div class="glass-card rounded-2xl p-5 md:p-6 shadow-xl space-y-4">
+        <h2 class="text-base font-bold text-white flex items-center gap-2 border-b border-borderDark pb-3">
+          <i class="fa-solid fa-database text-accentCyan"></i> Copia de Seguridad de Datos
+        </h2>
+
+        <p class="text-xs text-slate-300">
+          Exporta tus registros a un archivo JSON para tener un respaldo seguro o restaurarlos en otro teléfono móvil.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 pt-1">
+          <!-- Export Button -->
+          <button onclick="exportDataJSON()" 
+                  class="flex-1 bg-cardDark hover:bg-cardHover border border-borderDark text-white font-semibold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all">
+            <i class="fa-solid fa-file-export text-accentCyan"></i> Exportar Copia (JSON)
+          </button>
+
+          <!-- Import Button -->
+          <label class="flex-1 bg-cardDark hover:bg-cardHover border border-borderDark text-white font-semibold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-all">
+            <i class="fa-solid fa-file-import text-accentGreen"></i> Importar Backup
+            <input type="file" id="import-file-input" accept=".json" onchange="importDataJSON(event)" class="hidden">
+          </label>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="pt-4 border-t border-borderDark">
+          <button onclick="confirmResetData()" 
+                  class="text-xs text-accentRed hover:text-red-400 flex items-center gap-1.5 transition-all">
+            <i class="fa-solid fa-trash-can"></i> Borrar todos los datos de repostaje
+          </button>
+        </div>
+      </div>
+
+      <!-- Vehicle Specs Card -->
+      <div class="glass-card rounded-2xl p-5 shadow-xl text-xs space-y-2">
+        <h3 class="font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-accentCyan"></i> Ficha Técnica OMODA 5 SHS HEV
+        </h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 text-slate-300">
+          <div class="bg-bgDark/80 p-2.5 rounded-lg border border-borderDark">
+            <span class="text-[10px] text-slate-500 block">Motorización</span>
+            <strong>1.5 Turbo Hybrid (HEV)</strong>
+          </div>
+          <div class="bg-bgDark/80 p-2.5 rounded-lg border border-borderDark">
+            <span class="text-[10px] text-slate-500 block">Transmisión</span>
+            <strong>DHT Electromecánica</strong>
+          </div>
+          <div class="bg-bgDark/80 p-2.5 rounded-lg border border-borderDark">
+            <span class="text-[10px] text-slate-500 block">Capacidad Depósito</span>
+            <strong>51 Litros</strong>
+          </div>
+          <div class="bg-bgDark/80 p-2.5 rounded-lg border border-borderDark">
+            <span class="text-[10px] text-slate-500 block">Homologación WLTP</span>
+            <strong>5.2 l/100km</strong>
+          </div>
+          <div class="bg-bgDark/80 p-2.5 rounded-lg border border-borderDark">
+            <span class="text-[10px] text-slate-500 block">Batería SHS</span>
+            <strong>1.83 kWh High-Power</strong>
+          </div>
+          <div class="bg-bgDark/80 p-2.5 rounded-lg border border-borderDark">
+            <span class="text-[10px] text-slate-500 block">Autonomía Teórica</span>
+            <strong>~980 km / Depósito</strong>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-bgDark/95 backdrop-blur-lg border-t border-borderDark px-3 py-2">
+    <div class="flex justify-around items-center">
+      
+      <button onclick="switchTab('calculadora')" id="tab-mob-calculadora" class="mobile-nav-btn active flex flex-col items-center gap-1 text-slate-400 text-[10px] font-semibold transition-all">
+        <i class="fa-solid fa-calculator text-lg transition-transform"></i>
+        <span>Calculadora</span>
+      </button>
+
+      <button onclick="switchTab('historial')" id="tab-mob-historial" class="mobile-nav-btn flex flex-col items-center gap-1 text-slate-400 text-[10px] font-semibold transition-all">
+        <i class="fa-solid fa-list-check text-lg transition-transform"></i>
+        <span>Historial</span>
+      </button>
+
+      <button onclick="switchTab('estadisticas')" id="tab-mob-estadisticas" class="mobile-nav-btn flex flex-col items-center gap-1 text-slate-400 text-[10px] font-semibold transition-all">
+        <i class="fa-solid fa-chart-line text-lg transition-transform"></i>
+        <span>Estadísticas</span>
+      </button>
+
+      <button onclick="switchTab('pwa')" id="tab-mob-pwa" class="mobile-nav-btn flex flex-col items-center gap-1 text-slate-400 text-[10px] font-semibold transition-all">
+        <i class="fa-solid fa-mobile-screen-button text-lg transition-transform"></i>
+        <span>Backup/PWA</span>
+      </button>
+
+    </div>
+  </nav>
+
+  <!-- Custom Toast Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-2 pointer-events-none max-w-sm w-full px-4"></div>
+
+  <!-- Custom Confirmation Modal -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="glass-card max-w-sm w-full rounded-2xl p-5 shadow-2xl border border-borderDark space-y-4 animate-in fade-in zoom-in duration-150">
+      <div class="flex items-center gap-3 text-accentOrange">
+        <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+        <h3 id="modal-title" class="font-bold text-base text-white">¿Estás seguro?</h3>
+      </div>
+      <p id="modal-message" class="text-xs text-slate-300 leading-relaxed">
+        Esta acción eliminará el registro de forma permanente.
+      </p>
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="modal-cancel-btn" class="px-4 py-2 rounded-xl text-xs font-semibold bg-bgDark text-slate-300 border border-borderDark hover:bg-slate-800">
+          Cancelar
+        </button>
+        <button id="modal-confirm-btn" class="px-4 py-2 rounded-xl text-xs font-semibold bg-accentRed text-white hover:bg-red-600 shadow-lg shadow-red-500/20">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    // Global Constants & State
+    const WLTP_BENCHMARK = 5.2; // l/100km official OMODA 5 SHS HEV
+    const TANK_CAPACITY = 51;  // Liters
+    const STORAGE_KEY = 'omoda5_refuels_db';
+
+    let refuels = [];
+    let chartInstance = null;
+    let deferredPrompt = null;
+
+    // Default seed data for initial rich experience if localStorage is empty
+    const SAMPLE_REFUELS = [
+      { id: '1710000001000', fecha: '2026-02-12', km: 640, litros: 32.8, precio: 1.589, consumo: 5.13, costeTotal: 52.12, costeKm: 0.081, autonomia: 994 },
+      { id: '1710000002000', fecha: '2026-02-28', km: 680, litros: 33.5, precio: 1.569, consumo: 4.93, costeTotal: 52.56, costeKm: 0.077, autonomia: 1034 },
+      { id: '1710000003000', fecha: '2026-03-16', km: 610, litros: 33.2, precio: 1.619, consumo: 5.44, costeTotal: 53.75, costeKm: 0.088, autonomia: 937 },
+      { id: '1710000004000', fecha: '2026-04-02', km: 705, litros: 35.1, precio: 1.579, consumo: 4.98, costeTotal: 55.42, costeKm: 0.079, autonomia: 1024 }
+    ];
+
+    // Initialization
+    window.onload = function() {
+      initPWAAndSW();
+      loadRefuels();
+      setDefaultDate();
+      renderHistorial();
+      renderStats();
+    };
+
+    // Set today's date as default input
+    function setDefaultDate() {
+      const today = new Date().toISOString().split('T')[0];
+      const dateInput = document.getElementById('input-fecha');
+      if (dateInput) dateInput.value = today;
+    }
+
+    // Load data from localStorage
+    function loadRefuels() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          refuels = JSON.parse(stored);
+        } catch (e) {
+          refuels = [...SAMPLE_REFUELS];
+        }
+      } else {
+        refuels = [...SAMPLE_REFUELS];
+        saveRefuelsToStorage();
+      }
+    }
+
+    function saveRefuelsToStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(refuels));
+    }
+
+    // Navigation Tab Switching
+    function switchTab(tabId) {
+      // Hide all sections
+      ['calculadora', 'historial', 'estadisticas', 'pwa'].forEach(id => {
+        const sec = document.getElementById(`sec-${id}`);
+        if (sec) sec.classList.add('hidden');
+
+        const deskBtn = document.getElementById(`tab-desk-${id}`);
+        if (deskBtn) deskBtn.classList.remove('active', 'text-accentCyan');
+
+        const mobBtn = document.getElementById(`tab-mob-${id}`);
+        if (mobBtn) mobBtn.classList.remove('active');
+      });
+
+      // Show selected section
+      const activeSec = document.getElementById(`sec-${tabId}`);
+      if (activeSec) activeSec.classList.remove('hidden');
+
+      const activeDeskBtn = document.getElementById(`tab-desk-${tabId}`);
+      if (activeDeskBtn) activeDeskBtn.classList.add('active');
+
+      const activeMobBtn = document.getElementById(`tab-mob-${tabId}`);
+      if (activeMobBtn) activeMobBtn.classList.add('active');
+
+      // Refresh charts if switching to statistics
+      if (tabId === 'estadisticas') {
+        renderStats();
+      }
+    }
+
+    // Live Calculation Metrics
+    function calculateLiveMetrics() {
+      const km = parseFloat(document.getElementById('input-km').value) || 0;
+      const litros = parseFloat(document.getElementById('input-litros').value) || 0;
+      const precio = parseFloat(document.getElementById('input-precio').value) || 0;
+
+      const resConsumo = document.getElementById('res-consumo');
+      const resCosteTotal = document.getElementById('res-coste-total');
+      const resCosteKm = document.getElementById('res-coste-km');
+      const resAutonomia = document.getElementById('res-autonomia');
+      const wltpBadge = document.getElementById('wltp-badge');
+
+      if (km > 0 && litros > 0) {
+        const consumo = (litros / km) * 100;
+        const costeTotal = litros * precio;
+        const costeKm = costeTotal / km;
+        const autonomia = (TANK_CAPACITY / consumo) * 100;
+
+        resConsumo.textContent = consumo.toFixed(2);
+        resCosteTotal.textContent = costeTotal > 0 ? costeTotal.toFixed(2) : '--';
+        resCosteKm.textContent = (costeTotal > 0 && km > 0) ? costeKm.toFixed(3) : '--';
+        resAutonomia.textContent = Math.round(autonomia);
+
+        // WLTP Comparison Badge Calculation
+        const diffPct = ((consumo - WLTP_BENCHMARK) / WLTP_BENCHMARK) * 100;
+        if (diffPct <= 0) {
+          wltpBadge.className = 'mt-2 text-[10px] px-2 py-0.5 rounded-md inline-block w-fit bg-accentGreen/20 text-accentGreen border border-accentGreen/30 font-semibold';
+          wltpBadge.textContent = `${diffPct.toFixed(1)}% vs WLTP (Excelente)`;
+        } else if (diffPct <= 15) {
+          wltpBadge.className = 'mt-2 text-[10px] px-2 py-0.5 rounded-md inline-block w-fit bg-accentOrange/20 text-accentOrange border border-accentOrange/30 font-semibold';
+          wltpBadge.textContent = `+${diffPct.toFixed(1)}% vs WLTP (Eficiente)`;
+        } else {
+          wltpBadge.className = 'mt-2 text-[10px] px-2 py-0.5 rounded-md inline-block w-fit bg-accentRed/20 text-accentRed border border-accentRed/30 font-semibold';
+          wltpBadge.textContent = `+${diffPct.toFixed(1)}% vs WLTP (Elevado)`;
+        }
+
+      } else {
+        resConsumo.textContent = '--';
+        resCosteTotal.textContent = '--';
+        resCosteKm.textContent = '--';
+        resAutonomia.textContent = '--';
+        wltpBadge.className = 'mt-2 text-[10px] px-2 py-0.5 rounded-md inline-block w-fit bg-slate-800 text-slate-400';
+        wltpBadge.textContent = 'vs WLTP (5.2)';
+      }
+    }
+
+    // Save New Refuel Record
+    function handleSaveRefuel(event) {
+      event.preventDefault();
+
+      const km = parseFloat(document.getElementById('input-km').value);
+      const litros = parseFloat(document.getElementById('input-litros').value);
+      const precio = parseFloat(document.getElementById('input-precio').value);
+      const fecha = document.getElementById('input-fecha').value;
+
+      if (!km || !litros || !precio || !fecha) {
+        showToast('Por favor, rellena todos los campos correctamente.', 'error');
+        return;
+      }
+
+      const consumo = (litros / km) * 100;
+      const costeTotal = litros * precio;
+      const costeKm = costeTotal / km;
+      const autonomia = (TANK_CAPACITY / consumo) * 100;
+
+      const newRecord = {
+        id: Date.now().toString(),
+        fecha,
+        km,
+        litros,
+        precio,
+        consumo: parseFloat(consumo.toFixed(2)),
+        costeTotal: parseFloat(costeTotal.toFixed(2)),
+        costeKm: parseFloat(costeKm.toFixed(3)),
+        autonomia: Math.round(autonomia)
+      };
+
+      // Unshift to top of array
+      refuels.unshift(newRecord);
+      saveRefuelsToStorage();
+
+      // Reset Form fields
+      document.getElementById('input-km').value = '';
+      document.getElementById('input-litros').value = '';
+      calculateLiveMetrics();
+
+      renderHistorial();
+      showToast('¡Repostaje guardado con éxito!', 'success');
+    }
+
+    // Render History Records
+    function renderHistorial() {
+      const container = document.getElementById('historial-container');
+      const emptyState = document.getElementById('historial-empty');
+      const countLabel = document.getElementById('historial-count');
+
+      countLabel.textContent = refuels.length;
+
+      if (refuels.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      // Sort by date descending
+      const sorted = [...refuels].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+      container.innerHTML = sorted.map(item => `
+        <div class="glass-card p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-borderDark hover:border-slate-600 transition-all">
+          
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-bgDark border border-borderDark flex flex-col items-center justify-center shrink-0">
+              <i class="fa-solid fa-gas-pump text-accentCyan text-sm"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-white text-sm">${item.fecha}</span>
+                <span class="text-xs px-2 py-0.5 rounded-md ${item.consumo <= WLTP_BENCHMARK ? 'bg-accentGreen/10 text-accentGreen border border-accentGreen/20' : 'bg-slate-800 text-slate-300'} font-semibold">
+                  ${item.consumo} l/100km
+                </span>
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5 space-x-2">
+                <span>${item.km} km</span> • <span>${item.litros} L</span> • <span>${item.precio} €/L</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 border-borderDark pt-2 sm:pt-0">
+            <div class="text-left sm:text-right">
+              <div class="text-sm font-extrabold text-white">${item.costeTotal.toFixed(2)} €</div>
+              <div class="text-[10px] text-slate-400">${item.costeKm.toFixed(3)} €/km</div>
+            </div>
+
+            <button onclick="confirmDeleteRecord('${item.id}')" 
+                    class="w-8 h-8 rounded-lg bg-bgDark hover:bg-accentRed/20 text-slate-400 hover:text-accentRed border border-borderDark flex items-center justify-center transition-all">
+              <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+          </div>
+
+        </div>
+      `).join('');
+    }
+
+    // Confirm Delete Modal Handler
+    function confirmDeleteRecord(id) {
+      showConfirmModal(
+        'Eliminar Repostaje',
+        '¿Deseas eliminar permanentemente este registro del historial?',
+        () => {
+          refuels = refuels.filter(r => r.id !== id);
+          saveRefuelsToStorage();
+          renderHistorial();
+          showToast('Registro eliminado.', 'info');
+        }
+      );
+    }
+
+    // Render Statistics & Chart.js
+    function renderStats() {
+      if (refuels.length === 0) {
+        document.getElementById('stat-media-global').textContent = '--';
+        document.getElementById('stat-km-totales').textContent = '--';
+        document.getElementById('stat-gasto-total').textContent = '--';
+        document.getElementById('stat-mejor-consumo').textContent = '--';
+        document.getElementById('stat-peor-consumo').textContent = '--';
+        return;
+      }
+
+      const totalKm = refuels.reduce((acc, r) => acc + r.km, 0);
+      const totalLitros = refuels.reduce((acc, r) => acc + r.litros, 0);
+      const totalGasto = refuels.reduce((acc, r) => acc + r.costeTotal, 0);
+      
+      const mediaGlobal = totalKm > 0 ? (totalLitros / totalKm) * 100 : 0;
+      
+      const consumos = refuels.map(r => r.consumo);
+      const mejorConsumo = Math.min(...consumos);
+      const peorConsumo = Math.max(...consumos);
+
+      document.getElementById('stat-media-global').textContent = mediaGlobal.toFixed(2);
+      document.getElementById('stat-km-totales').textContent = Math.round(totalKm).toLocaleString();
+      document.getElementById('stat-gasto-total').textContent = totalGasto.toFixed(2) + ' €';
+      document.getElementById('stat-mejor-consumo').textContent = mejorConsumo.toFixed(2);
+      document.getElementById('stat-peor-consumo').textContent = peorConsumo.toFixed(2);
+
+      // Render Chart
+      renderChart();
+    }
+
+    function renderChart() {
+      const ctx = document.getElementById('chart-consumo');
+      if (!ctx) return;
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      // Chronological sort for graph (oldest to newest)
+      const sorted = [...refuels].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+      const labels = sorted.map(r => r.fecha);
+      const dataConsumos = sorted.map(r => r.consumo);
+      const dataWltp = sorted.map(() => WLTP_BENCHMARK);
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Consumo Real (l/100km)',
+              data: dataConsumos,
+              borderColor: '#00d2ff',
+              backgroundColor: 'rgba(0, 210, 255, 0.1)',
+              borderWidth: 3,
+              fill: true,
+              tension: 0.3,
+              pointBackgroundColor: '#00d2ff',
+              pointRadius: 5
+            },
+            {
+              label: 'Homologación WLTP (5.2)',
+              data: dataWltp,
+              borderColor: '#10b981',
+              borderWidth: 2,
+              borderDash: [6, 6],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: '#94a3b8',
+                font: { size: 11, family: 'Inter' }
+              }
+            },
+            tooltip: {
+              backgroundColor: '#1b2436',
+              titleColor: '#fff',
+              bodyColor: '#00d2ff',
+              borderColor: '#2a364f',
+              borderWidth: 1,
+              padding: 10
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#64748b', font: { size: 10 } },
+              grid: { color: 'rgba(42, 54, 79, 0.4)' }
+            },
+            y: {
+              ticks: { color: '#64748b', font: { size: 10 } },
+              grid: { color: 'rgba(42, 54, 79, 0.4)' },
+              suggestedMin: 4.0,
+              suggestedMax: 7.0
+            }
+          }
+        }
+      });
+    }
+
+    // Backup & JSON Export / Import
+    function exportDataJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(refuels, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `OMODA_5_Consumo_Backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Copia de seguridad descargada.', 'success');
+    }
+
+    function importDataJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            refuels = imported;
+            saveRefuelsToStorage();
+            renderHistorial();
+            renderStats();
+            showToast('Datos importados correctamente.', 'success');
+          } else {
+            showToast('El archivo JSON no tiene un formato válido.', 'error');
+          }
+        } catch (err) {
+          showToast('Error al leer el archivo JSON.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function confirmResetData() {
+      showConfirmModal(
+        'Borrar Base de Datos',
+        '¿Deseas borrar TODOS los registros de consumo acumulados? Esta acción no se puede deshacer.',
+        () => {
+          refuels = [];
+          saveRefuelsToStorage();
+          renderHistorial();
+          renderStats();
+          showToast('Todos los datos han sido borrados.', 'info');
+        }
+      );
+    }
+
+    // Dynamic PWA Manifest & Embedded Service Worker Setup
+    function initPWAAndSW() {
+      // 1. Inject Dynamic Web App Manifest
+      const manifestData = {
+        name: "OMODA 5 SHS HEV - Control de Consumo",
+        short_name: "OMODA Consumo",
+        description: "Calculadora y registro de consumo de combustible para OMODA 5 SHS HEV",
+        start_url: window.location.href,
+        display: "standalone",
+        background_color: "#121826",
+        theme_color: "#121826",
+        orientation: "portrait",
+        icons: [
+          {
+            src: "https://img.icons8.com/color/512/car--v1.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable"
+          }
+        ]
+      };
+
+      const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+      const manifestURL = URL.createObjectURL(manifestBlob);
+      document.getElementById('manifest-placeholder').setAttribute('href', manifestURL);
+
+      // 2. Register Embedded Blob Service Worker
+      if ('serviceWorker' in navigator) {
+        const swCode = `
+          const CACHE_NAME = 'omoda5-pwa-v1';
+          self.addEventListener('install', (e) => {
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (e) => {
+            e.waitUntil(clients.claim());
+          });
+          self.addEventListener('fetch', (e) => {
+            e.respondWith(
+              fetch(e.request).catch(() => caches.match(e.request))
+            );
+          });
+        `;
+
+        const swBlob = new Blob([swCode], { type: 'text/javascript' });
+        const swURL = URL.createObjectURL(swBlob);
+
+        navigator.serviceWorker.register(swURL)
+          .then(() => console.log('PWA Service Worker registered via Blob'))
+          .catch(err => console.log('SW registration note:', err));
+      }
+
+      // 3. Listen for PWA Install Prompt Event
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const installBtn = document.getElementById('pwa-install-btn');
+        if (installBtn) {
+          installBtn.classList.remove('hidden');
+        }
+      });
+    }
+
+    function triggerPwaInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            showToast('¡Gracias por instalar OMODA Consumo!', 'success');
+          }
+          deferredPrompt = null;
+        });
+      } else {
+        showToast('Para instalar: Usa la opción "Añadir a pantalla de inicio" de tu navegador.', 'info');
+      }
+    }
+
+    // Toast Notification System
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      let iconClass = 'fa-circle-info text-accentCyan';
+      let borderClass = 'border-accentCyan/30';
+
+      if (type === 'success') {
+        iconClass = 'fa-circle-check text-accentGreen';
+        borderClass = 'border-accentGreen/30';
+      } else if (type === 'error') {
+        iconClass = 'fa-circle-exclamation text-accentRed';
+        borderClass = 'border-accentRed/30';
+      }
+
+      toast.className = `glass-card p-3 rounded-xl border ${borderClass} shadow-xl flex items-center gap-3 text-xs text-white pointer-events-auto transform transition-all duration-300 translate-y-[-10px] opacity-0`;
+      toast.innerHTML = `
+        <i class="fa-solid ${iconClass} text-base shrink-0"></i>
+        <span class="flex-grow font-medium">${message}</span>
+      `;
+
+      container.appendChild(toast);
+
+      // Animate In
+      setTimeout(() => {
+        toast.classList.remove('translate-y-[-10px]', 'opacity-0');
+      }, 10);
+
+      // Auto Dismiss
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-[-10px]');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Custom Confirm Modal System
+    function showConfirmModal(title, message, onConfirm) {
+      const modal = document.getElementById('confirm-modal');
+      const titleEl = document.getElementById('modal-title');
+      const messageEl = document.getElementById('modal-message');
+      const confirmBtn = document.getElementById('modal-confirm-btn');
+      const cancelBtn = document.getElementById('modal-cancel-btn');
+
+      titleEl.textContent = title;
+      messageEl.textContent = message;
+
+      modal.classList.remove('hidden');
+
+      const handleConfirm = () => {
+        onConfirm();
+        cleanup();
+      };
+
+      const handleCancel = () => {
+        cleanup();
+      };
+
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        confirmBtn.removeEventListener('click', handleConfirm);
+        cancelBtn.removeEventListener('click', handleCancel);
+      };
+
+      confirmBtn.addEventListener('click', handleConfirm);
+      cancelBtn.addEventListener('click', handleCancel);
+    }
+  </script>
+</body>
+</html>
